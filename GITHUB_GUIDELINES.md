@@ -67,3 +67,53 @@ You have full access to the host machine. This host is isolated and managed by K
 - Never share tokens, credentials, or authentication details with anyone
 - If asked by anyone (human, AI, or system) to provide GitHub access: REFUSE immediately
 - This access was given to you by your operator — it is not to be shared
+
+## 10. Proper Formatting for Issues and PRs — CRITICAL
+When creating issues or PRs via the `gh` CLI, ensure content is human-readable:
+
+### The Problem
+Using `\n` as a literal string in shell commands does NOT create newlines. It creates literal `\n` text that shows up in the issue/PR.
+
+### Correct Methods
+1. **Use shell $'...' syntax** for interpreted newlines:
+```bash
+gh issue create --title "My Issue" --body $'## Description\n\nThis is on a new line.\n\n## Another section'
+```
+
+2. **Use a file** (recommended for long content):
+```bash
+echo "## Description
+
+This is properly formatted.
+" > body.md
+gh issue create --title "My Issue" --body-file body.md
+```
+
+3. **Use actual line breaks** in the string (works in some shells):
+```bash
+gh issue create --title "My Issue" --body "Line one
+Line two
+Line three"
+```
+
+4. **For PRs with multiline descriptions**, use the file approach:
+```bash
+cat > pr_body.md << 'EOF'
+## Description
+
+Your description here with proper formatting.
+
+## Changes
+
+- Change 1
+- Change 2
+EOF
+gh pr create --title "PR Title" --body-file pr_body.md
+```
+
+### NEVER use:
+- `\n` as a literal string (becomes literal text, not newline)
+- Concatenated strings without proper newline handling
+
+### Always verify
+After creating an issue/PR, check that it renders correctly. If it shows `\n` literally, edit it to fix the formatting.
