@@ -36,51 +36,26 @@
     text-align: center;
     box-shadow: 0 8px 32px rgba(0,0,0,0.3);
   }
-  .logo {
-    font-size: 3rem;
-    margin-bottom: 0.5rem;
-  }
-  h1 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-    color: var(--accent);
-  }
-  .subtitle {
-    color: var(--muted);
-    font-size: 0.9rem;
-    margin-bottom: 1.5rem;
-  }
+  .logo { font-size: 3rem; margin-bottom: 0.5rem; }
+  h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--accent); }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
   .status {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    justify-content: center;
-    padding: 1rem;
-    border-radius: 8px;
-    margin: 1rem 0;
-    font-size: 0.95rem;
+    display: flex; align-items: center; gap: 0.5rem; justify-content: center;
+    padding: 1rem; border-radius: 8px; margin: 1rem 0; font-size: 0.95rem;
   }
   .status.loading { background: rgba(210,153,29,0.1); color: var(--yellow); }
   .status.success { background: rgba(63,185,80,0.1); color: var(--green); }
   .status.error { background: rgba(248,81,73,0.1); color: var(--red); }
   .spinner {
-    width: 20px; height: 20px;
-    border: 2px solid var(--border);
-    border-top-color: var(--yellow);
-    border-radius: 50%;
+    width: 20px; height: 20px; border: 2px solid var(--border);
+    border-top-color: var(--yellow); border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   .info {
-    background: rgba(139,148,158,0.06);
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    margin: 1rem 0;
-    font-size: 0.8rem;
-    color: var(--muted);
-    text-align: left;
-    line-height: 1.5;
+    background: rgba(139,148,158,0.06); border-radius: 8px;
+    padding: 0.75rem 1rem; margin: 1rem 0; font-size: 0.8rem;
+    color: var(--muted); text-align: left; line-height: 1.5;
   }
   .info strong { color: var(--text); }
   a { color: var(--accent); }
@@ -92,20 +67,17 @@
 <div class="card">
   <div class="logo">🌸</div>
   <h1>Simplicity × Pollinations</h1>
-  <p class="subtitle">Bring Your Own Pollen</p>
+  <p class="subtitle">Bring Your Own Pollen — 25% supports the developer</p>
 
-  <!-- LOADING -->
   <div id="loading" class="status loading">
     <div class="spinner"></div>
     <span id="loading-text">Initializing...</span>
   </div>
 
-  <!-- SUCCESS -->
   <div id="success" class="status success hidden">
     <span>✅ Connected! Return to your terminal.</span>
   </div>
 
-  <!-- ERROR -->
   <div id="error-box" class="status error hidden">
     <span id="error-text">Something went wrong</span>
   </div>
@@ -140,91 +112,91 @@
     success.querySelector('span').textContent = msg || '✅ Connected! Return to your terminal.';
   }
 
-  // ── Route: Inbound (Pollinations redirect with API key) ──────
-  const fragment = window.location.hash.substring(1);
-  const fragParams = new URLSearchParams(fragment);
+  // ── Route: Inbound callback (Pollinations redirect with API key) ──
+  var fragment = window.location.hash.substring(1);
+  var fragParams = new URLSearchParams(fragment);
 
-  const apiKey = fragParams.get('api_key');
-  const fragState = fragParams.get('state');
-  const fragError = fragParams.get('error');
+  var apiKey = fragParams.get('api_key');
+  var fragState = fragParams.get('state');
+  var fragError = fragParams.get('error');
 
   if (apiKey) {
-    // We have an API key! Relay it to the local CLI server.
     loadingText.textContent = 'Sending key to Simplicity...';
 
-    const storedPort = localStorage.getItem('simplicity_port');
-    const storedState = localStorage.getItem('simplicity_state');
+    var storedPort = localStorage.getItem('simplicity_port');
+    var storedState = localStorage.getItem('simplicity_state');
 
-    // Validate state for CSRF protection
+    // Validate state
     if (storedState && fragState && storedState !== fragState) {
-      showError('Security check failed — state mismatch.',
-        'The state parameter doesn\'t match. This could be a CSRF attack. Please try signing in again.');
+      showError('Security check failed.',
+        'The state parameter doesn\'t match. Please run <code>simp auth</code> again.');
       return;
     }
 
     if (!storedPort) {
       showError('No local server info found.',
-        'The authentication page lost track of your local Simplicity instance.<br>Please run <code>simp auth</code> again.');
+        'Please run <code>simp auth</code> again to restart the flow.');
       return;
     }
 
-    // Send API key to local server
+    // Send API key to local CLI server
     fetch('http://localhost:' + storedPort + '/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ api_key: apiKey }),
     })
-    .then(resp => {
+    .then(function(resp) {
       if (resp.ok) {
         showSuccess('✅ Connected! You can close this tab.');
-        // Clean up
         localStorage.removeItem('simplicity_port');
         localStorage.removeItem('simplicity_state');
       } else {
         throw new Error('Server returned ' + resp.status);
       }
     })
-    .catch(err => {
-      showError('Failed to reach Simplicity on your machine.',
-        'Make sure Simplicity is still running.<br>Error: ' + err.message +
-        '<br><br>Try running <code>simp auth</code> again.');
+    .catch(function(err) {
+      showError('Failed to reach Simplicity.',
+        'Make sure Simplicity is still running.<br>' +
+        'Error: ' + err.message + '<br><br>' +
+        'Try running <code>simp auth</code> again.');
     });
     return;
   }
 
   if (fragError) {
-    showError('Authentication was denied or failed.',
-      'Error: ' + fragError + '<br><br>You can try again by running <code>simp auth</code>.');
+    showError('Authentication denied.',
+      'Error: ' + fragError + '<br><br>Run <code>simp auth</code> to try again.');
     return;
   }
 
-  // ── Route: Outbound (first visit — start auth flow) ─────────
-  const queryParams = new URLSearchParams(window.location.search);
-  const port = queryParams.get('port');
-  const state = queryParams.get('state');
-  const appKey = queryParams.get('app_key') || 'pk_GVZMVD9V84NNXCWd';
+  // ── Route: Outbound (first visit with params → strip → redirect) ──
+  var queryParams = new URLSearchParams(window.location.search);
+  var port = queryParams.get('port');
+  var state = queryParams.get('state');
+  var appKey = queryParams.get('app_key') || 'pk_GVZMVD9V84NNXCWd';
 
   if (port) {
-    // Store local server info
+    // STEP 1: Save params to localStorage
     localStorage.setItem('simplicity_port', port);
     localStorage.setItem('simplicity_state', state || '');
 
-    loadingText.textContent = 'Redirecting to Pollinations...';
+    loadingText.textContent = 'Preparing authentication...';
 
-    // Build auth URL
-    const redirectUri = encodeURIComponent(
-      'https://endeavor-doxi-doxi.github.io/auth.html'
-    );
-    const authParams = new URLSearchParams({
-      redirect_uri: 'https://endeavor-doxi-doxi.github.io/auth.html',
-      client_id: appKey,
-      scope: 'generate',
-      state: state || '',
-    });
+    // STEP 2: Strip query params from URL by replacing with clean URL.
+    //         This ensures no extra params pollute the redirect.
+    //         Use replace() so back button doesn't loop.
+    var cleanUrl = window.location.pathname;
+    window.history.replaceState(null, '', cleanUrl);
 
-    // Redirect to Pollinations
-    window.location.href =
-      'https://enter.pollinations.ai/authorize?' + authParams.toString();
+    // STEP 3: Now redirect to Pollinations with just the clean redirect_uri.
+    //         The redirect_uri is just this page with no extra params.
+    var authUrl = 'https://enter.pollinations.ai/authorize?' +
+      'redirect_uri=' + encodeURIComponent('https://endeavor-doxidoxi.github.io/auth.html') +
+      '&client_id=' + encodeURIComponent(appKey) +
+      '&scope=generate' +
+      '&state=' + encodeURIComponent(state || '');
+
+    window.location.href = authUrl;
     return;
   }
 
@@ -232,7 +204,7 @@
   showError('Nothing to do here!',
     'This page handles the Simplicity authentication flow.<br><br>' +
     'To sign in, run <code>simp auth</code> in your terminal.<br>' +
-    'The CLI will open this page automatically with the right parameters.');
+    'The CLI will open this page automatically.');
 })();
 </script>
 
