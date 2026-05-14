@@ -193,6 +193,8 @@
     var authUrl = 'https://enter.pollinations.ai/authorize?' +
       'redirect_uri=' + encodeURIComponent('https://endeavor-doxidoxi.github.io/auth.html') +
       '&client_id=' + encodeURIComponent(appKey) +
+      '&scope=generate' +
+      '&budget=5' +
       '&expiry=365' +
       '&state=' + encodeURIComponent(state || '');
 
