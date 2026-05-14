@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simplicity × Pollinations</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --muted: #8b949e;
+    --accent: #f781c0;
+    --green: #3fb950;
+    --yellow: #d2991d;
+    --red: #f85149;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2.5rem 2rem;
+    max-width: 480px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+  .logo {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--accent);
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    font-size: 0.95rem;
+  }
+  .status.loading { background: rgba(210,153,29,0.1); color: var(--yellow); }
+  .status.success { background: rgba(63,185,80,0.1); color: var(--green); }
+  .status.error { background: rgba(248,81,73,0.1); color: var(--red); }
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--yellow);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .info {
+    background: rgba(139,148,158,0.06);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: left;
+    line-height: 1.5;
+  }
+  .info strong { color: var(--text); }
+  a { color: var(--accent); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">🌸</div>
+  <h1>Simplicity × Pollinations</h1>
+  <p class="subtitle">Bring Your Own Pollen</p>
+
+  <!-- LOADING -->
+  <div id="loading" class="status loading">
+    <div class="spinner"></div>
+    <span id="loading-text">Initializing...</span>
+  </div>
+
+  <!-- SUCCESS -->
+  <div id="success" class="status success hidden">
+    <span>✅ Connected! Return to your terminal.</span>
+  </div>
+
+  <!-- ERROR -->
+  <div id="error-box" class="status error hidden">
+    <span id="error-text">Something went wrong</span>
+  </div>
+
+  <div id="info" class="info hidden"></div>
+</div>
+
+<script>
+(function() {
+  const loading = document.getElementById('loading');
+  const loadingText = document.getElementById('loading-text');
+  const success = document.getElementById('success');
+  const errorBox = document.getElementById('error-box');
+  const errorText = document.getElementById('error-text');
+  const info = document.getElementById('info');
+
+  function showError(msg, detail) {
+    loading.classList.add('hidden');
+    success.classList.add('hidden');
+    errorBox.classList.remove('hidden');
+    errorText.textContent = msg;
+    if (detail) {
+      info.innerHTML = detail;
+      info.classList.remove('hidden');
+    }
+  }
+
+  function showSuccess(msg) {
+    loading.classList.add('hidden');
+    errorBox.classList.add('hidden');
+    success.classList.remove('hidden');
+    success.querySelector('span').textContent = msg || '✅ Connected! Return to your terminal.';
+  }
+
+  // ── Route: Inbound (Pollinations redirect with API key) ──────
+  const fragment = window.location.hash.substring(1);
+  const fragParams = new URLSearchParams(fragment);
+
+  const apiKey = fragParams.get('api_key');
+  const fragState = fragParams.get('state');
+  const fragError = fragParams.get('error');
+
+  if (apiKey) {
+    // We have an API key! Relay it to the local CLI server.
+    loadingText.textContent = 'Sending key to Simplicity...';
+
+    const storedPort = localStorage.getItem('simplicity_port');
+    const storedState = localStorage.getItem('simplicity_state');
+
+    // Validate state for CSRF protection
+    if (storedState && fragState && storedState !== fragState) {
+      showError('Security check failed — state mismatch.',
+        'The state parameter doesn\'t match. This could be a CSRF attack. Please try signing in again.');
+      return;
+    }
+
+    if (!storedPort) {
+      showError('No local server info found.',
+        'The authentication page lost track of your local Simplicity instance.<br>Please run <code>simp auth</code> again.');
+      return;
+    }
+
+    // Send API key to local server
+    fetch('http://localhost:' + storedPort + '/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: apiKey }),
+    })
+    .then(resp => {
+      if (resp.ok) {
+        showSuccess('✅ Connected! You can close this tab.');
+        // Clean up
+        localStorage.removeItem('simplicity_port');
+        localStorage.removeItem('simplicity_state');
+      } else {
+        throw new Error('Server returned ' + resp.status);
+      }
+    })
+    .catch(err => {
+      showError('Failed to reach Simplicity on your machine.',
+        'Make sure Simplicity is still running.<br>Error: ' + err.message +
+        '<br><br>Try running <code>simp auth</code> again.');
+    });
+    return;
+  }
+
+  if (fragError) {
+    showError('Authentication was denied or failed.',
+      'Error: ' + fragError + '<br><br>You can try again by running <code>simp auth</code>.');
+    return;
+  }
+
+  // ── Route: Outbound (first visit — start auth flow) ─────────
+  const queryParams = new URLSearchParams(window.location.search);
+  const port = queryParams.get('port');
+  const state = queryParams.get('state');
+  const appKey = queryParams.get('app_key') || 'pk_GVZMVD9V84NNXCWd';
+
+  if (port) {
+    // Store local server info
+    localStorage.setItem('simplicity_port', port);
+    localStorage.setItem('simplicity_state', state || '');
+
+    loadingText.textContent = 'Redirecting to Pollinations...';
+
+    // Build auth URL
+    const redirectUri = encodeURIComponent(
+      'https://endeavor-doxi-doxi.github.io/auth.html'
+    );
+    const authParams = new URLSearchParams({
+      redirect_uri: 'https://endeavor-doxi-doxi.github.io/auth.html',
+      client_id: appKey,
+      scope: 'generate',
+      state: state || '',
+    });
+
+    // Redirect to Pollinations
+    window.location.href =
+      'https://enter.pollinations.ai/authorize?' + authParams.toString();
+    return;
+  }
+
+  // ── No params: show helpful message ─────────────────────────
+  showError('Nothing to do here!',
+    'This page handles the Simplicity authentication flow.<br><br>' +
+    'To sign in, run <code>simp auth</code> in your terminal.<br>' +
+    'The CLI will open this page automatically with the right parameters.');
+})();
+</script>
+
+</body>
+</html>
